@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Merry Christmas for Cong You Xia - Ultimate Color</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Inter:wght@400;600&family=Noto+Serif+SC:wght@500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: linear-gradient(to bottom, #000205 0%, #001219 60%, #002233 100%); /* 加深背景对比度 */
+            font-family: 'Inter', 'Noto Serif SC', sans-serif;
+            cursor: default;
+        }
+
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none; /* 让点击穿透到 canvas 或 body */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.3) 100%);
+        }
+
+        #start-btn {
+            pointer-events: auto;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            padding: 18px 45px;
+            border-radius: 60px;
+            color: #fff;
+            font-size: 1.1rem;
+            letter-spacing: 3px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-top: 50px; 
+            z-index: 20;
+        }
+
+        #start-btn:hover {
+            background: rgba(255, 255, 255, 0.4);
+            transform: scale(1.05);
+            box-shadow: 0 0 40px rgba(100, 200, 255, 0.6);
+        }
+
+        #start-btn.hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.8);
+        }
+
+        #message-container {
+            position: absolute;
+            text-align: center;
+            color: #fff;
+            pointer-events: none;
+            top: 40%;
+            transform: translateY(-50%);
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        #main-title {
+            font-family: 'Dancing Script', cursive;
+            font-size: 6rem;
+            background: linear-gradient(to right, #ffffff, #ffecd2, #fcb69f);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            opacity: 0;
+            transform: scale(1.2);
+            filter: blur(10px);
+            transition: all 1.5s ease;
+            margin-bottom: 20px;
+            text-shadow: 0 0 30px rgba(255,200,200,0.3);
+        }
+
+        .glass-text-container {
+            display: inline-block;
+            background: rgba(0, 0, 0, 0.4); /* 加深底色，突出文字 */
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 20px 40px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 1s ease;
+        }
+
+        .msg-main {
+            font-family: 'Noto Serif SC', serif;
+            font-size: 2.8rem;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            text-shadow: 0 2px 5px rgba(0,0,0,0.8);
+        }
+
+        .msg-sub {
+            font-family: 'Noto Serif SC', serif;
+            font-size: 1.5rem;
+            color: #eeeeee;
+            letter-spacing: 2px;
+            text-shadow: 0 2px 5px rgba(0,0,0,0.8);
+        }
+
+        .visible {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            filter: blur(0);
+        }
+        
+        /* 提示点击的微交互 */
+        body.can-click {
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+
+    <div id="ui-layer">
+        <div id="message-container">
+            <h1 id="main-title">Merry Christmas</h1>
+            <div id="msg-container-1" class="glass-text-container">
+                <div class="msg-main">🎄 圣诞快乐，葱油虾 🎄</div>
+            </div>
+            <div id="msg-container-2" class="glass-text-container">
+                <div class="msg-sub">祝你天天开心呀</div>
+            </div>
+            <div id="click-hint" style="margin-top:20px; font-size: 0.8rem; opacity: 0; transition: opacity 1s; color: rgba(255,255,255,0.5);">
+                ( 点击屏幕燃放焰火 )
+            </div>
+        </div>
+        <button id="start-btn">点一下</button>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+                "tween": "https://unpkg.com/@tweenjs/tween.js@23.1.1/dist/tween.esm.js"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+        import * as TWEEN from 'tween';
+
+        // --- 配置 ---
+        const CONFIG = {
+            treeCount: 40000,
+            ribbonCount: 8000,
+            treeHeight: 70,
+            treeRadius: 28,
+            colorBottom: new THREE.Color('#003333'),
+            colorTop: new THREE.Color('#ccf0ff'),
+            lightOnColor: new THREE.Color('#fff5cc'), 
+            kittyScale: 1.75 
+        };
+
+        let scene, camera, renderer, composer, controls, bloomPass;
+        let treeMesh, ribbonMesh, lightsMesh, kittyMesh;
+        
+        // 焰火系统
+        let fireworkSystem;
+        const fireworks = []; // 存储所有活跃的焰火粒子组
+
+        let time = 0;
+        let isLightsOn = false;
+        let interactionEnabled = false; // 控制何时允许点击放烟花
+        const clock = new THREE.Clock();
+
+        function init() {
+            const container = document.getElementById('canvas-container');
+
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x001219, 0.012); // 匹配背景
+
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 2000);
+            camera.position.set(0, 30, 140);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            // 降低曝光，让颜色更深沉饱和
+            renderer.toneMapping = THREE.ReinhardToneMapping;
+            renderer.toneMappingExposure = 1.2; 
+            container.appendChild(renderer.domElement);
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.autoRotate = true;
+            controls.autoRotateSpeed = 0.5;
+            controls.maxPolarAngle = Math.PI / 2 + 0.1;
+            controls.minDistance = 50; 
+            controls.maxDistance = 250;
+
+            // 后期处理
+            const renderScene = new RenderPass(scene, camera);
+            bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+            bloomPass.threshold = 0.1;
+            bloomPass.strength = 0.3; // 初始辉光弱一点，让颜色透出来
+            bloomPass.radius = 0.5;
+            
+            composer = new EffectComposer(renderer);
+            composer.addPass(renderScene);
+            composer.addPass(bloomPass);
+
+            // --- 灯光系统 (关键修正：高亮但无色偏) ---
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7); // 提高环境光
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.8); // 主光
+            dirLight.position.set(30, 50, 100);
+            scene.add(dirLight);
+            
+            const backLight = new THREE.DirectionalLight(0xffaa00, 0.5); // 背光轮廓
+            backLight.position.set(-30, 20, -50);
+            scene.add(backLight);
+
+            // --- 创建物体 ---
+            createParticleTree();
+            createSpiralRibbon();
+            createChristmasLights();
+            createSaturatedHelloKitty(); // 使用新的高饱和度函数
+            
+            // 地面
+            const planeGeo = new THREE.CircleGeometry(150, 64);
+            const planeMat = new THREE.MeshStandardMaterial({ 
+                color: 0x001219,
+                roughness: 0.1,
+                metalness: 0.5,
+                transparent: true, 
+                opacity: 0.8,
+                side: THREE.DoubleSide
+            });
+            const plane = new THREE.Mesh(planeGeo, planeMat);
+            plane.rotation.x = -Math.PI / 2;
+            plane.position.y = -18.5;
+            scene.add(plane);
+
+            window.addEventListener('resize', onWindowResize);
+            // 全局点击监听
+            window.addEventListener('click', onGlobalClick);
+            
+            animate();
+            setupIntro();
+        }
+
+        // --- 全屏点击放烟花 ---
+        function onGlobalClick(event) {
+            // 只有在按钮点击后，interactionEnabled 为 true 时才允许放烟花
+            if (!interactionEnabled) return;
+
+            // 简单的射线检测，为了在点击位置上方一点生成烟花（可选，这里简化为随机位置爆炸）
+            // 为了视觉效果，我们直接在屏幕中心上方随机区域爆炸
+            launchFireworkBatch();
+        }
+
+        function launchFireworkBatch() {
+            const particleCount = 600;
+            const geometry = new THREE.BufferGeometry();
+            const positions = [];
+            const colors = [];
+            const velocities = [];
+
+            // 随机爆炸中心
+            const cx = (Math.random() - 0.5) * 60;
+            const cy = 30 + Math.random() * 30;
+            const cz = (Math.random() - 0.5) * 40 + 20;
+
+            // 随机颜色
+            const color = new THREE.Color().setHSL(Math.random(), 1.0, 0.6);
+
+            for(let i=0; i<particleCount; i++) {
+                positions.push(cx, cy, cz);
+                colors.push(color.r, color.g, color.b);
+                
+                // 爆炸速度向量
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos(Math.random() * 2 - 1);
+                const speed = 1.0 + Math.random() * 3.0; // 速度
+                
+                velocities.push(
+                    speed * Math.sin(phi) * Math.cos(theta),
+                    speed * Math.sin(phi) * Math.sin(theta),
+                    speed * Math.cos(phi)
+                );
+            }
+
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+
+            const material = new THREE.PointsMaterial({
+                size: 1.5,
+                vertexColors: true,
+                blending: THREE.AdditiveBlending,
+                transparent: true,
+                opacity: 1,
+                depthWrite: false
+            });
+
+            const points = new THREE.Points(geometry, material);
+            scene.add(points);
+
+            // 保存到数组以便更新
+            fireworks.push({
+                mesh: points,
+                velocities: velocities,
+                life: 1.0 + Math.random() * 0.5, // 存活时间
+                age: 0
+            });
+
+            // 瞬间增强辉光
+            const oldStrength = bloomPass.strength;
+            bloomPass.strength = 2.5;
+            setTimeout(() => { bloomPass.strength = oldStrength; }, 100);
+        }
+
+        function updateFireworks(delta) {
+            for (let i = fireworks.length - 1; i >= 0; i--) {
+                const fw = fireworks[i];
+                fw.age += delta;
+                
+                if (fw.age > fw.life) {
+                    // 移除
+                    scene.remove(fw.mesh);
+                    fw.mesh.geometry.dispose();
+                    fw.mesh.material.dispose();
+                    fireworks.splice(i, 1);
+                    continue;
+                }
+
+                const positions = fw.mesh.geometry.attributes.position.array;
+                for (let j = 0; j < fw.velocities.length / 3; j++) {
+                    const idx = j * 3;
+                    // 更新位置
+                    positions[idx] += fw.velocities[idx];
+                    positions[idx+1] += fw.velocities[idx+1];
+                    positions[idx+2] += fw.velocities[idx+2];
+
+                    // 重力
+                    fw.velocities[idx+1] -= 0.15; 
+                    
+                    // 阻力
+                    fw.velocities[idx] *= 0.98;
+                    fw.velocities[idx+1] *= 0.98;
+                    fw.velocities[idx+2] *= 0.98;
+                }
+                fw.mesh.geometry.attributes.position.needsUpdate = true;
+                
+                // 慢慢消失
+                fw.mesh.material.opacity = 1 - (fw.age / fw.life);
+            }
+        }
+
+
+        // --- 4. 高饱和度 Hello Kitty (Saturated Version) ---
+        function createSaturatedHelloKitty() {
+            const particleGeo = new THREE.OctahedronGeometry(0.14, 0); // 稍微加大粒子
+            
+            // 关键修正：使用 Standard 材质，关闭 Emissive，增加 Roughness
+            const particleMat = new THREE.MeshStandardMaterial({ 
+                color: 0xffffff, // 基础色
+                emissive: 0x000000, // 纯黑自发光，防止泛白！
+                roughness: 0.8, // 粗糙表面，像哑光塑料/积木，显色更好
+                metalness: 0.1, 
+            });
+            
+            const maxParticles = 18000;
+            kittyMesh = new THREE.InstancedMesh(particleGeo, particleMat, maxParticles);
+            kittyMesh.frustumCulled = false; 
+            
+            const dummy = new THREE.Object3D();
+            const colors = [];
+            let pIndex = 0;
+
+            const cx = 40, cy = -2, cz = 20; 
+            const s = CONFIG.kittyScale;
+
+            const addParticle = (x, y, z, r, g, b, scaleVar=0.1) => {
+                if (pIndex >= maxParticles) return;
+                dummy.position.set(cx + x*s, cy + y*s, cz + z*s);
+                const sc = 1 + (Math.random()-0.5)*scaleVar;
+                dummy.scale.set(sc, sc, sc);
+                dummy.rotation.set(Math.random(), Math.random(), Math.random());
+                dummy.updateMatrix();
+                kittyMesh.setMatrixAt(pIndex++, dummy.matrix);
+                
+                // 颜色增强：直接推入高饱和度的颜色值
+                colors.push(r, g, b);
+            };
+
+            // 1. 头 (纯白，不偏灰)
+            const headW = 8, headH = 6.2, headD = 5.5;
+            for(let i=0; i<8000; i++) {
+                let x, y, z;
+                do { x = (Math.random()*2-1)*headW; y = (Math.random()*2-1)*headH; z = (Math.random()*2-1)*headD; } 
+                while ((x*x)/(headW*headW) + (y*y)/(headH*headH) + (z*z)/(headD*headD) > 1);
+                addParticle(x, y+4, z, 1.0, 1.0, 1.0); 
+            }
+            // 2. 身体 (深蓝/正蓝，提高饱和度)
+            for(let i=0; i<4000; i++) {
+                const h = Math.random()*6; const rAtH = 5.5 - (5.5-3.5)*(h/6); const angle = Math.random()*Math.PI*2; const r = Math.sqrt(Math.random())*rAtH;
+                addParticle(r*Math.cos(angle), h-3, r*Math.sin(angle), 0.0, 0.4, 0.9); // R=0, G=0.4, B=0.9
+            }
+            // 3. 耳朵
+            const addEar = (offsetX, tilt) => {
+                for(let i=0; i<800; i++) {
+                    const h = Math.random()*3.5; const rBase = 2.5*(1-h/3.5); const angle = Math.random()*Math.PI*2; const r=Math.sqrt(Math.random())*rBase;
+                    let px=r*Math.cos(angle), py=h, pz=r*Math.sin(angle);
+                    const tc=Math.cos(tilt), ts=Math.sin(tilt);
+                    addParticle(px*tc-py*ts + offsetX, px*ts+py*tc + 9, pz, 1.0, 1.0, 1.0);
+                }
+            }
+            addEar(-5, -0.4); addEar(5, 0.4);
+            // 4. 蝴蝶结 (正红，R=1.0)
+            for(let i=0; i<1000; i++) {
+                const r=Math.pow(Math.random(),0.5), th=Math.random()*Math.PI*2, ph=Math.random()*Math.PI;
+                if(i<200) addParticle(-4+1.2*r*Math.sin(ph)*Math.cos(th), 8.5+1.2*r*Math.sin(ph)*Math.sin(th), 2.5+1.2*r*Math.cos(ph), 1.0, 0.0, 0.1);
+                else { const side=(i%2===0)?1:-1; const rad=1.8*r; addParticle(-4+rad*Math.sin(ph)*Math.cos(th)+side*1.8, 8.5+rad*Math.sin(ph)*Math.sin(th)*0.6+side*0.5, 2.5+rad*Math.cos(ph)*0.8, 0.9, 0.0, 0.1); }
+            }
+            // 5. 五官
+            const addFeatureLine = (x1,y1,z1,x2,y2,z2,c,R,G,B) => { for(let i=0;i<=c;i++){ const t=i/c; addParticle(x1+(x2-x1)*t+(Math.random()-0.5)*0.2, y1+(y2-y1)*t+(Math.random()-0.5)*0.2, z1+(z2-z1)*t, R,G,B, 0); }}
+            for(let side=-1; side<=1; side+=2) for(let i=0; i<150; i++) { const a=Math.random()*Math.PI*2, r=Math.sqrt(Math.random()); addParticle(side*3.2+r*Math.cos(a)*0.7, 3.5+r*Math.sin(a)*0.9, 5.2, 0.05,0.05,0.05); } // 黑眼
+            for(let i=0; i<120; i++) { const a=Math.random()*Math.PI*2, r=Math.sqrt(Math.random()); addParticle(r*Math.cos(a)*0.8, 2.5+r*Math.sin(a)*0.5, 5.5, 1.0, 0.8, 0.0); } // 黄鼻
+            for(let side=-1; side<=1; side+=2) { const sx=side*5, ex=side*7.5, zp=4.8; addFeatureLine(sx,3.5,zp,ex,4.2,zp,40,0.1,0.1,0.1); addFeatureLine(sx,2.5,zp,ex,2.5,zp,40,0.1,0.1,0.1); addFeatureLine(sx,1.5,zp,ex,0.8,zp,40,0.1,0.1,0.1); } // 黑须
+
+            while(pIndex < maxParticles) { dummy.position.set(0, -10000, 0); dummy.updateMatrix(); kittyMesh.setMatrixAt(pIndex++, dummy.matrix); colors.push(0,0,0); }
+            kittyMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(colors), 3);
+            scene.add(kittyMesh);
+        }
+
+        // --- 交互逻辑 ---
+        function setupIntro() {
+            const btn = document.getElementById('start-btn');
+            const mainTitle = document.getElementById('main-title');
+            const msgContainer1 = document.getElementById('msg-container-1');
+            const msgContainer2 = document.getElementById('msg-container-2');
+            const hint = document.getElementById('click-hint');
+
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation(); // 防止点按钮时直接触发烟花
+                btn.classList.add('hidden');
+                isLightsOn = true;
+
+                // 1. 光爆效果 (Bloom)
+                new TWEEN.Tween(bloomPass)
+                    .to({ strength: 3.5, radius: 1.0 }, 150)
+                    .easing(TWEEN.Easing.Cubic.Out)
+                    .chain( new TWEEN.Tween(bloomPass).to({ strength: 0.8, radius: 0.6 }, 1800).easing(TWEEN.Easing.Exponential.Out) )
+                    .start();
+                
+                // 2. 摄像机动作
+                const originalY = camera.position.y;
+                new TWEEN.Tween(camera.position)
+                    .to({ y: originalY - 6, z: camera.position.z - 10 }, 180)
+                    .easing(TWEEN.Easing.Back.Out)
+                    .chain( new TWEEN.Tween(camera.position).to({ y: originalY, z: 140 }, 1500).easing(TWEEN.Easing.Elastic.Out) )
+                    .start();
+
+                // 3. UI 显现
+                setTimeout(() => { mainTitle.classList.add('visible'); }, 800);
+                setTimeout(() => { msgContainer1.classList.add('visible'); }, 2000);
+                setTimeout(() => { 
+                    msgContainer2.classList.add('visible');
+                    // 开启交互
+                    interactionEnabled = true;
+                    document.body.classList.add('can-click');
+                    hint.style.opacity = 1;
+                    // 自动放第一波烟花庆祝
+                    launchFireworkBatch();
+                }, 3200);
+            });
+        }
+
+        // --- 标准组件创建函数 (树、丝带、灯) ---
+        function createParticleTree() {
+            const geometry = new THREE.OctahedronGeometry(0.2, 0); 
+            const material = new THREE.MeshStandardMaterial({ roughness: 0.4, metalness: 0.6, flatShading: true });
+            treeMesh = new THREE.InstancedMesh(geometry, material, CONFIG.treeCount);
+            const dummy = new THREE.Object3D(); const colors = [];
+            for (let i = 0; i < CONFIG.treeCount; i++) {
+                const theta = Math.random() * Math.PI * 2; const hRatio = Math.pow(Math.random(), 1.5); const y = hRatio * CONFIG.treeHeight - 18; const r = (1 - hRatio) * CONFIG.treeRadius * Math.sqrt(Math.random()); 
+                dummy.position.set(r * Math.cos(theta), y, r * Math.sin(theta)); dummy.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI); const scale = Math.random() * 0.7 + 0.3; dummy.scale.set(scale, scale, scale); dummy.updateMatrix();
+                treeMesh.setMatrixAt(i, dummy.matrix); const color = new THREE.Color().lerpColors(CONFIG.colorBottom, CONFIG.colorTop, hRatio * 1.2); colors.push(color.r, color.g, color.b);
+            }
+            treeMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(colors), 3); scene.add(treeMesh);
+        }
+        function createSpiralRibbon() {
+            const geometry = new THREE.TetrahedronGeometry(0.18, 0);
+            const material = new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xffaa00, emissiveIntensity: 0.2, roughness: 0.2, metalness: 1.0 });
+            ribbonMesh = new THREE.InstancedMesh(geometry, material, CONFIG.ribbonCount);
+            const dummy = new THREE.Object3D();
+            for (let i = 0; i < CONFIG.ribbonCount; i++) {
+                const p = i / CONFIG.ribbonCount; const y = p * CONFIG.treeHeight - 18; const r = (1 - Math.pow(p, 1.2)) * (CONFIG.treeRadius + 1.5); const angle = p * Math.PI * 2 * 8.5 + Math.PI/4;
+                dummy.position.set(r * Math.cos(angle) + (Math.random()-0.5)*0.5, y, r * Math.sin(angle) + (Math.random()-0.5)*0.5); dummy.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI); let scale = Math.sin(p * Math.PI) * 0.6 + 0.4; dummy.scale.set(scale, scale, scale); dummy.updateMatrix();
+                ribbonMesh.setMatrixAt(i, dummy.matrix);
+            }
+            scene.add(ribbonMesh);
+        }
+        function createChristmasLights() {
+            const geometry = new THREE.SphereGeometry(0.5, 16, 16);
+            const material = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x000000, roughness: 0.1, metalness: 0.2 });
+            const count = 700; lightsMesh = new THREE.InstancedMesh(geometry, material, count);
+            const dummy = new THREE.Object3D(); const colors = [];
+            const palette = [ 0x00ffff, 0xffa500, 0x00ced1, 0xff4500, 0xffd700 ]; // 青橙色系
+            for (let i = 0; i < count; i++) {
+                const theta = Math.random() * Math.PI * 2; const hRatio = Math.random(); const r = (1 - hRatio) * CONFIG.treeRadius + 0.8;
+                dummy.position.set(r * Math.cos(theta), hRatio * CONFIG.treeHeight - 18, r * Math.sin(theta)); dummy.updateMatrix(); lightsMesh.setMatrixAt(i, dummy.matrix);
+                const c = new THREE.Color(palette[Math.floor(Math.random() * palette.length)]); colors.push(c.r, c.g, c.b);
+            }
+            lightsMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(colors), 3); lightsMesh.userData.palette = palette; scene.add(lightsMesh);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight); composer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+            time += delta;
+            TWEEN.update();
+            updateFireworks(delta);
+
+            if (ribbonMesh) ribbonMesh.rotation.y = -time * 0.15;
+            if (kittyMesh) {
+                kittyMesh.position.y = Math.sin(time * 1.1) * 2.5; kittyMesh.rotation.y = Math.sin(time * 0.6) * 0.1;
+            }
+            if (lightsMesh && isLightsOn) {
+                const breath = (Math.sin(time * 2.5) + 1) * 0.5 * 0.6 + 0.4; const colorsAttr = lightsMesh.instanceColor;
+                for(let i=0; i < lightsMesh.count; i++) {
+                    const flicker = Math.sin(time * (3 + (i%7)) + i) > 0.7 ? 1.8 : 0.8; const intensity = breath * flicker;
+                    const paletteColor = new THREE.Color(lightsMesh.userData.palette[i % lightsMesh.userData.palette.length]);
+                    colorsAttr.setXYZ(i, paletteColor.r * intensity * 3.5, paletteColor.g * intensity * 3.5, paletteColor.b * intensity * 3.5);
+                }
+                colorsAttr.needsUpdate = true; lightsMesh.material.emissive.copy(CONFIG.lightOnColor); lightsMesh.material.emissiveIntensity = breath * 1.5;
+            }
+            controls.update(); composer.render();
+        }
+        init();
+    </script>
+</body>
+</html>
